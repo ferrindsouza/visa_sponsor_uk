@@ -20,6 +20,13 @@ let allData = [];
 let headers = [];
 let filteredData = []; // Store filtered data for download
 
+// --- Gemini API Key (Required for local use) ---
+// This key is automatically provided in the online environment, but you need to add your own for local use.
+// You can get a key from https://aistudio.google.com/
+// const API_KEY = ""; // Uncomment this and add your key if you are running this locally.
+const API_KEY = ""; // In the online canvas environment, this is automatically handled.
+const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
+
 // Helper function to show a status message
 function showStatus(message, isLoading = false) {
     statusMessage.classList.remove('hidden');
@@ -224,4 +231,64 @@ function downloadCSV(data) {
     document.body.removeChild(link);
     
     showStatus('Filtered CSV downloaded successfully!', false);
+}
+
+// --- New Gemini API Functions ---
+// Function to handle exponential backoff for API calls
+const withExponentialBackoff = async (fn, retries = 3, delay = 1000) => {
+    try {
+        return await fn();
+    } catch (error) {
+        if (retries > 0) {
+            console.log(`Retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return withExponentialBackoff(fn, retries - 1, delay * 2);
+        }
+        throw error;
+    }
+};
+
+// Main function to call the Gemini API
+async function generateText(companyName, type) {
+    geminiOutput.classList.remove('hidden');
+    geminiContent.textContent = 'Generating...';
+    
+    let prompt;
+    if (type === 'summary') {
+        prompt = `Provide a brief, one-paragraph summary of what the company "${companyName}" does. Focus on their industry and services. If you don't know, respond with "Information not available for this company."`;
+    } else if (type === 'email') {
+        prompt = `Draft a concise, professional email to a recruiter for a job application at "${companyName}". Keep it under 100 words. The email should express strong interest in the company, mention the job seeker is a skilled worker, and ask about potential opportunities.`;
+    }
+
+    try {
+        const payload = {
+            contents: [{
+                role: "user",
+                parts: [{ text: prompt }]
+            }]
+        };
+
+        const response = await withExponentialBackoff(() => fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }));
+
+        if (!response.ok) {
+            throw new Error(`API call failed with status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        const generatedText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (generatedText) {
+            geminiContent.textContent = generatedText;
+        } else {
+            geminiContent.textContent = 'Could not generate a response. Please try again.';
+        }
+
+    } catch (error) {
+        console.error('Error calling Gemini API:', error);
+        geminiContent.textContent = 'An error occurred. Please try again later.';
+    }
 }
