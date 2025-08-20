@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UK Visa Sponsor Filter</title>
+    <!-- Use Tailwind CSS for a clean, responsive design -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <!-- Link to your local CSS file -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-100 p-6">
+
+    <div class="container bg-white rounded-xl shadow-lg p-8">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">UK Skilled Worker Visa Sponsor Filter</h1>
+            <p class="mt-2 text-gray-600">
+                Upload your CSV file to filter companies based on your specific criteria.
+            </p>
+        </div>
+
+        <!-- File Upload Section -->
+        <div class="bg-blue-50 border-2 border-blue-200 border-dashed rounded-lg p-6 mb-8 text-center">
+            <label for="csvFile" class="block text-blue-700 font-medium mb-2">
+                Select your CSV file (up to 20 MB)
+            </label>
+            <input type="file" id="csvFile" accept=".csv" class="block w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-sm file:font-semibold
+                file:bg-blue-50 file:text-blue-700
+                hover:file:bg-blue-100"/>
+        </div>
+
+        <!-- Filtering Options -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div>
+                <label for="companyType" class="block text-sm font-medium text-gray-700 mb-1">Company Type (IT related)</label>
+                <input type="text" id="companyType" value="IT, Tech, Software, Digital, Data" placeholder="e.g., IT, Tech, Software" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                <p class="text-xs text-gray-500 mt-1">Keywords separated by commas.</p>
+            </div>
+            <div>
+                <label for="country" class="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                <select id="country" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                    <option value="Scotland">Scotland</option>
+                    <option value="UK">Other parts of UK</option>
+                </select>
+            </div>
+            <div>
+                <label for="sponsorType" class="block text-sm font-medium text-gray-700 mb-1">Sponsor Type</label>
+                <select id="sponsorType" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                    <option value="Worker (A rating)">Worker (A rating)</option>
+                    <option value="Temporary">Temporary</option>
+                </select>
+            </div>
+            <div>
+                <label for="route" class="block text-sm font-medium text-gray-700 mb-1">Route</label>
+                <select id="route" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                    <option value="Skilled Worker">Skilled Worker</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Action Buttons and Status -->
+        <div class="flex flex-col sm:flex-row items-center justify-between mb-8">
+            <div class="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                <button id="filterBtn" class="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white font-bold rounded-full shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out">
+                    Filter Companies
+                </button>
+                <a href="https://licensed-sponsors-uk.com/sponsors" target="_blank" class="w-full sm:w-auto px-6 py-3 text-center bg-gray-600 text-white font-bold rounded-full shadow-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition duration-150 ease-in-out">
+                    Verify Sponsors
+                </a>
+                <button id="downloadBtn" class="w-full sm:w-auto px-6 py-3 bg-green-600 text-white font-bold rounded-full shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-150 ease-in-out hidden">
+                    Download Filtered CSV
+                </button>
+            </div>
+            <div id="statusMessage" class="mt-4 sm:mt-0 sm:ml-4 text-sm text-gray-600 hidden">
+                <span id="loadingIndicator" class="loading-spinner inline-block mr-2 hidden"></span>
+                <span id="messageText"></span>
+            </div>
+        </div>
+
+        <!-- Results Table -->
+        <div id="resultsSection" class="hidden">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-2xl font-semibold text-gray-800">Filtered Companies</h2>
+                <div id="resultCount" class="text-gray-500"></div>
+            </div>
+            <div class="overflow-x-auto rounded-lg shadow-md">
+                <table id="resultsTable" class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <!-- Headers will be added dynamically here -->
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <!-- Rows will be added dynamically here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Error/No Results Message -->
+        <div id="noResults" class="hidden text-center p-8 bg-gray-50 rounded-lg shadow-inner">
+            <p class="text-gray-500">No companies found matching the criteria. Please try different filters or upload a different file.</p>
+        </div>
+    </div>
+
+    <!-- Link to your local JavaScript file -->
+    <script src="app.js" type="module"></script>
+</body>
+</html>
