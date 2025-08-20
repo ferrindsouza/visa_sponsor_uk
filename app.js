@@ -15,6 +15,8 @@ const resultsTableBody = document.querySelector('#resultsTable tbody');
 const resultsTableHeader = document.querySelector('#resultsTable thead tr');
 const resultCount = document.getElementById('resultCount');
 const noResults = document.getElementById('noResults');
+const geminiOutput = document.getElementById('geminiOutput');
+const geminiContent = document.getElementById('geminiContent');
 
 let allData = [];
 let headers = [];
@@ -44,6 +46,7 @@ function clearResults() {
     noResults.classList.add('hidden');
     statusMessage.classList.add('hidden');
     downloadBtn.classList.add('hidden');
+    geminiOutput.classList.add('hidden');
     resultsTableBody.innerHTML = '';
     resultsTableHeader.innerHTML = '';
 }
@@ -114,6 +117,10 @@ function applyFilters() {
     const countryValue = countrySelect.value;
     const sponsorTypeValue = sponsorTypeSelect.value;
     const routeValue = routeSelect.value;
+    
+    // Keywords for different regions
+    const scotlandKeywords = ['scotland', 'edinburgh', 'glasgow', 'aberdeen', 'dundee', 'inverness'];
+    const ukKeywords = ['england', 'wales', 'northern ireland', 'london', 'manchester', 'birmingham', 'leeds', 'liverpool', 'cardiff', 'belfast'];
 
     // Use a timeout to prevent UI from freezing on large files
     setTimeout(() => {
@@ -131,15 +138,14 @@ function applyFilters() {
                 county.includes(keyword)
             );
 
-            // Filter 2: Country (Scotland first, then other UK)
+            // Filter 2: Country (Scotland or other UK)
             let isCountryMatch = false;
             if (countryValue === 'Scotland') {
-                isCountryMatch = county.includes('scotland') || townCity.includes('scotland');
+                isCountryMatch = scotlandKeywords.some(keyword => townCity.includes(keyword) || county.includes(keyword));
             } else if (countryValue === 'UK') {
-                isCountryMatch = (
-                    county.includes('england') || county.includes('wales') || county.includes('northern ireland') || 
-                    townCity.includes('london') || townCity.includes('manchester') // common UK city examples
-                ) && !(county.includes('scotland') || townCity.includes('scotland'));
+                isCountryMatch = ukKeywords.some(keyword => townCity.includes(keyword) || county.includes(keyword));
+                // Ensure it's not also a Scottish location to avoid overlap
+                isCountryMatch = isCountryMatch && !scotlandKeywords.some(keyword => townCity.includes(keyword) || county.includes(keyword));
             }
 
             // Filter 3: Sponsor Type and Rating
@@ -177,7 +183,8 @@ function displayResults(data) {
     resultCount.textContent = `${data.length} results found`;
 
     // Create table headers from the original CSV headers
-    headers.forEach(header => {
+    const newHeaders = [...headers, 'LinkedIn', 'AI Actions'];
+    newHeaders.forEach(header => {
         const th = document.createElement('th');
         th.textContent = header;
         th.classList.add('px-6', 'py-3', 'text-xs', 'font-medium', 'text-gray-500', 'uppercase', 'tracking-wider');
@@ -188,20 +195,57 @@ function displayResults(data) {
     data.forEach(rowData => {
         const row = document.createElement('tr');
         row.classList.add('hover:bg-gray-50');
+        
+        // Add cells for the original data
         headers.forEach(header => {
             const cell = document.createElement('td');
             cell.textContent = rowData[header] || 'N/A';
             cell.classList.add('px-6', 'py-4', 'whitespace-nowrap', 'text-sm', 'text-gray-900');
             row.appendChild(cell);
         });
+
+        // Add a new cell for the LinkedIn link
+        const linkedInCell = document.createElement('td');
+        const companyName = rowData['Organisation Name'];
+        if (companyName) {
+            const linkedInUrl = `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(companyName)}`;
+            const link = document.createElement('a');
+            link.href = linkedInUrl;
+            link.textContent = 'View on LinkedIn';
+            link.target = '_blank';
+            link.classList.add('text-blue-600', 'hover:underline', 'font-medium');
+            linkedInCell.appendChild(link);
+        }
+        linkedInCell.classList.add('px-6', 'py-4', 'whitespace-nowrap', 'text-sm', 'text-gray-900');
+        row.appendChild(linkedInCell);
+
+        // Add a new cell for the Gemini API buttons
+        const actionsCell = document.createElement('td');
+        actionsCell.classList.add('px-6', 'py-4', 'whitespace-nowrap', 'text-sm', 'text-gray-900', 'space-x-2');
+        
+        const summaryBtn = document.createElement('button');
+        summaryBtn.textContent = '✨ Summarize Company';
+        summaryBtn.classList.add('bg-purple-100', 'text-purple-800', 'font-bold', 'py-1', 'px-3', 'rounded-full', 'hover:bg-purple-200');
+        summaryBtn.addEventListener('click', () => generateText(rowData['Organisation Name'], 'summary'));
+
+        const emailBtn = document.createElement('button');
+        emailBtn.textContent = '✨ Generate Email';
+        emailBtn.classList.add('bg-purple-100', 'text-purple-800', 'font-bold', 'py-1', 'px-3', 'rounded-full', 'hover:bg-purple-200');
+        emailBtn.addEventListener('click', () => generateText(rowData['Organisation Name'], 'email'));
+
+        const itCheckBtn = document.createElement('button');
+        itCheckBtn.textContent = '✨ Verify IT Company';
+        itCheckBtn.classList.add('bg-purple-100', 'text-purple-800', 'font-bold', 'py-1', 'px-3', 'rounded-full', 'hover:bg-purple-200');
+        itCheckBtn.addEventListener('click', () => generateText(rowData['Organisation Name'], 'it_check'));
+
+        actionsCell.appendChild(summaryBtn);
+        actionsCell.appendChild(emailBtn);
+        actionsCell.appendChild(itCheckBtn);
+        row.appendChild(actionsCell);
+
         resultsTableBody.appendChild(row);
     });
 }
-
-// Event listener for the download button
-downloadBtn.addEventListener('click', () => {
-    downloadCSV(filteredData);
-});
 
 // Function to create and download a CSV file
 function downloadCSV(data) {
@@ -258,7 +302,10 @@ async function generateText(companyName, type) {
         prompt = `Provide a brief, one-paragraph summary of what the company "${companyName}" does. Focus on their industry and services. If you don't know, respond with "Information not available for this company."`;
     } else if (type === 'email') {
         prompt = `Draft a concise, professional email to a recruiter for a job application at "${companyName}". Keep it under 100 words. The email should express strong interest in the company, mention the job seeker is a skilled worker, and ask about potential opportunities.`;
+    } else if (type === 'it_check') {
+        prompt = `Is "${companyName}" a company primarily in the IT, technology, or software industry? Respond with a single word: "Yes," "No," or "Unsure."`;
     }
+
 
     try {
         const payload = {
