@@ -416,3 +416,8 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Ignore generated files and temporary data
+filtered_companies.csv
+.DS_Store
+Thumbs.db
